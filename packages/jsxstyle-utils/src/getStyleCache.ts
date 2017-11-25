@@ -46,7 +46,11 @@ export default function getStyleCache() {
       styleCache.injectOptions = alreadyInjected;
     },
 
-    getClassName(props: Dict<any>, classNameProp?: string): string | null {
+    getClassName(
+      props: Dict<any>,
+      classNameProp?: string,
+      important?: boolean
+    ): string | null {
       styleCache.injectOptions = cannotInject;
 
       const styleObj = getStyleKeysForProps(props, pretty);
@@ -67,6 +71,7 @@ export default function getStyleCache() {
 
             let rule =
               selector +
+              (important ? selector : '') +
               (pseudoclass ? ':' + pseudoclass : '') +
               (pseudoelement ? '::' + pseudoelement : '') +
               ` {${styles}}`;

@@ -1,36 +1,39 @@
 import React from 'react';
-import { Block, Row } from 'jsxstyle';
+import { Block, Row, MediaQuery } from 'jsxstyle';
 import PropTypes from 'prop-types';
 
 import LayoutConstants from './LayoutConstants';
 
 export default function Avatar(props) {
   return (
-    <Row
-      width={192}
-      marginLeft="auto"
-      marginRight="auto"
-      alignItems="center"
-      mediaQueries={{
-        sm: 'screen and (max-width: 900px)',
-      }}
-      color="black"
-      smColor="blue"
-      hoverColor="white"
-      smHoverColor="red"
-      backgroundColor="white"
-      hoverBackgroundColor={LayoutConstants.secondaryColor}
+    <MediaQuery
+      query="screen and (max-width: 900px)"
+      color="blue"
+      hoverColor="red"
     >
-      <Block
-        style={{
-          backgroundImage: `url("http://graph.facebook.com/${props.username}/picture?type=large")`,
-        }}
-        backgroundSize="contain"
-        width={LayoutConstants.gridUnit * 6}
-        height={LayoutConstants.gridUnit * 6}
-      />
-      <Block marginLeft={LayoutConstants.gridUnit}>{props.username}</Block>
-    </Row>
+      <Row
+        width={192}
+        marginLeft="auto"
+        marginRight="auto"
+        alignItems="center"
+        color="black"
+        hoverColor="white"
+        backgroundColor="white"
+        hoverBackgroundColor={LayoutConstants.secondaryColor}
+      >
+        <Block
+          style={{
+            backgroundImage: `url("http://graph.facebook.com/${
+              props.username
+            }/picture?type=large")`,
+          }}
+          backgroundSize="contain"
+          width={LayoutConstants.gridUnit * 6}
+          height={LayoutConstants.gridUnit * 6}
+        />
+        <Block marginLeft={LayoutConstants.gridUnit}>{props.username}</Block>
+      </Row>
+    </MediaQuery>
   );
 }
 

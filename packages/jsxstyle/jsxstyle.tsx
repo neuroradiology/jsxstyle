@@ -1,6 +1,8 @@
 import * as React from 'react';
 import { Dict, componentStyles, getStyleCache } from 'jsxstyle-utils';
 
+export { default as MediaQuery } from './MediaQuery';
+
 import CSSProperties from './CSSProperties';
 
 export const cache = getStyleCache();

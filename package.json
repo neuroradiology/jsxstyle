@@ -17,7 +17,7 @@
     "release": "npm run rollup && lerna publish",
     "rollup": "npm run reset && npm run mktypes && rollup -c && prettier --write packages/{*,*/*}/jsxstyle*.{es,cjs}.js",
     "rollup_watch": "npm run reset && npm run mktypes && rollup -c -w;",
-    "start": "webpack-dev-server --hot --hotOnly --inline --historyApiFallback --config=example/webpack.config.js",
+    "start": "webpack-dev-server --hot --hotOnly --inline --historyApiFallback --config=examples/react/webpack.config.js",
     "update_readme": "echo \"$(<./misc/monorepo-preamble.md)\\n\\n---\\n\\n$(<./packages/jsxstyle/README.md)\" > README.md"
   },
   "dependencies": {
