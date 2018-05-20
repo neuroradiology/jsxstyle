@@ -1,0 +1,13 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`prettier-plugin-jsxstyle does not parse non-TS/JS files with jsxstyle-prettier-parser 1`] = `undefined`;
+
+exports[`prettier-plugin-jsxstyle parses JS files 1`] = `
+"import { Block } from \\"jsxstyle\\";
+
+<Block
+  color=\\"rgba(0, 0, 0, 0.1)\\"
+  backgroundImage=\\"linear-gradient(to bottom, 0% red, 100% blue)\\"
+/>;
+"
+`;

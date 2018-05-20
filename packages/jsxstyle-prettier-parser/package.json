@@ -1,0 +1,21 @@
+{
+  "name": "jsxstyle-prettier-parser",
+  "version": "0.0.0",
+  "description": "Parser for Prettier that formats CSS properties on jsxstyle components with Prettier",
+  "author": "Mike Meyer",
+  "license": "Apache-2.0",
+  "main": "lib/parser.js",
+  "private": true,
+  "keywords": [
+    "prettier",
+    "jsxstyle",
+    "parser"
+  ],
+  "dependencies": {
+    "@babel/traverse": "^7.0.0-beta.47",
+    "@types/prettier": "^1.12.2",
+    "babylon": "^7.0.0-beta.47",
+    "postcss-values-parser": "^1.5.0",
+    "prettier": "^1.12.1"
+  }
+}

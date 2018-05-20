@@ -5,6 +5,9 @@
   "author": "Mike Meyer",
   "license": "Apache-2.0",
   "main": "lib/loader.js",
+  "keywords": [
+    "webpack", "jsxstyle", "webpack-loader"
+  ],
   "engines": {
     "node": ">=6.0.0"
   },
