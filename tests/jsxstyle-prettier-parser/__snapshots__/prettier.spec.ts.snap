@@ -9,5 +9,25 @@ exports[`prettier-plugin-jsxstyle parses JS files 1`] = `
   color=\\"rgba(0, 0, 0, 0.1)\\"
   backgroundImage=\\"linear-gradient(to bottom, 0% red, 100% blue)\\"
 />;
+
+<div
+  color=\\"rgba(0,0,0,.1) \\"
+  backgroundImage=\\"linear-gradient( to bottom,  0% red, 100% blue )\\"
+/>;
+"
+`;
+
+exports[`prettier-plugin-jsxstyle parses TSX files 1`] = `
+"import { Block } from \\"jsxstyle\\";
+
+<Block
+  color=\\"rgba(0, 0, 0, 0.1)\\"
+  backgroundImage=\\"linear-gradient(to bottom, 0% red, 100% blue)\\"
+/>;
+
+<div
+  color=\\"rgba(0,0,0,.1) \\"
+  backgroundImage=\\"linear-gradient( to bottom,  0% red, 100% blue )\\"
+/>;
 "
 `;

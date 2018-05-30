@@ -16,4 +16,8 @@ declare module 'prettier' {
     printer?: prettier.Printer;
     astFormat?: string;
   }
+
+  export const __debug: any;
+
+  export const getFileInfo: any;
 }

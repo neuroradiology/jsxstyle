@@ -1,14 +1,17 @@
 import * as prettier from 'prettier';
 import babylonTraverse from './babylonTraverse';
-import typescriptTraverse from './typescriptTraverse';
-import { inferParser } from './utils';
 
 const parse: prettier.CustomParser = (text, parsers, options): null | void => {
   if (!options.filepath) {
     return null;
   }
 
-  const parserName = inferParser(options.filepath, options.plugins);
+  const fileInfo = prettier.getFileInfo.sync(options.filepath, {
+    ...options,
+    plugins: [],
+  });
+
+  const parserName = fileInfo.inferredParser;
 
   if (!parserName) {
     throw new Error(
@@ -31,11 +34,7 @@ const parse: prettier.CustomParser = (text, parsers, options): null | void => {
   const parser = parsers[parserName];
   const ast = parser(text);
 
-  if (parserName === 'babylon') {
-    babylonTraverse(ast);
-  } else {
-    typescriptTraverse(ast);
-  }
+  babylonTraverse(ast);
 
   return ast;
 };

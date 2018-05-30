@@ -10,17 +10,17 @@ export const inferParser = (
   const extension = path.extname(filepath);
   const filename = path.basename(filepath).toLowerCase();
 
-  const targetLanguage = prettier
-    .getSupportInfo(null, { plugins })
-    .languages.find(language => {
-      const resultLanguage =
-        language.since !== null &&
-        ((language.extensions && language.extensions.indexOf(extension) > -1) ||
-          (language.filenames &&
-            language.filenames.find(name => name.toLowerCase() === filename)));
+  console.log('plugins!', plugins);
 
-      return !!resultLanguage;
-    });
+  const targetLanguage = prettier.getSupportInfo().languages.find(language => {
+    const resultLanguage =
+      language.since !== null &&
+      ((language.extensions && language.extensions.indexOf(extension) > -1) ||
+        (language.filenames &&
+          language.filenames.find(name => name.toLowerCase() === filename)));
+
+    return !!resultLanguage;
+  });
 
   if (!targetLanguage) {
     return null;

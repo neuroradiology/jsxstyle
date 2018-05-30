@@ -7,7 +7,12 @@ import { Block } from 'jsxstyle';
 <Block
   color="rgba(0,0,0,.1) "
   backgroundImage="linear-gradient( to bottom,  0% red, 100% blue )"
-/>
+/>;
+
+<div
+  color="rgba(0,0,0,.1) "
+  backgroundImage="linear-gradient( to bottom,  0% red, 100% blue )"
+/>;
 `;
 
 describe('prettier-plugin-jsxstyle', () => {
@@ -20,7 +25,7 @@ describe('prettier-plugin-jsxstyle', () => {
     expect(output).toMatchSnapshot();
   });
 
-  it.skip('parses TSX files', () => {
+  it('parses TSX files', () => {
     const output = prettier.format(demoSource, {
       filepath: 'test.tsx',
       parser: jsxstyleParser,
