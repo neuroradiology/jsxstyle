@@ -3,14 +3,13 @@ import invariant = require('invariant');
 import loaderUtils = require('loader-utils');
 import path = require('path');
 import util = require('util');
-import webpack = require('webpack');
 
 import { CacheObject, LoaderOptions, PluginContext } from './types';
 import extractStyles from './utils/ast/extractStyles';
 
 const counter: any = Symbol.for('counter');
 
-const jsxstyleLoader: webpack.loader.Loader = function(content) {
+const jsxstyleLoader: import('webpack').loader.Loader = function(content) {
   if (this.cacheable) {
     this.cacheable();
   }
@@ -79,7 +78,7 @@ const jsxstyleLoader: webpack.loader.Loader = function(content) {
 
   memoryFS.mkdirpSync(path.dirname(rv.cssFileName));
   memoryFS.writeFileSync(rv.cssFileName, rv.css);
-  this.callback(null, rv.js, rv.map);
+  this.callback(null, rv.js, rv.map as any);
 
   return;
 };

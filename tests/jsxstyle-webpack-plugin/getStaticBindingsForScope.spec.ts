@@ -1,5 +1,5 @@
 import generate from '@babel/generator';
-import traverse from '@babel/traverse';
+import traverse, { Scope } from '@babel/traverse';
 import t = require('@babel/types');
 import path = require('path');
 import getStaticBindingsForScope from '../../packages/jsxstyle-webpack-plugin/lib/utils/ast/getStaticBindingsForScope';
@@ -35,7 +35,7 @@ function outerFunction(innerParam1, innerParam2) {
 
   const testItems: Record<
     string,
-    { attrs: Record<string, any>; scope: any }
+    { attrs: Record<string, any>; scope: Scope }
   > = {};
   traverse(ast, {
     JSXElement(traversePath) {

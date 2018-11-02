@@ -43,9 +43,7 @@ it('has a runtime size of less than 3KB', async () => {
 
   const bundle = await rollup(inputOptions);
   const result = await bundle.generate(outputOptions);
-
-  // TODO: narrow this correctly
-  const code = (result as any).code;
+  const { code } = result;
 
   return new Promise((resolve, reject) =>
     zlib.deflate(code, (err, buf) => {

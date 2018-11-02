@@ -1,20 +1,22 @@
-import generate from '@babel/generator';
+import generate, { GeneratorResult } from '@babel/generator';
 import traverse, { VisitNodeObject } from '@babel/traverse';
 import t = require('@babel/types');
 import Ajv = require('ajv');
 import invariant = require('invariant');
+import {
+  CSSProperties,
+  componentStyles,
+  getStyleKeysForProps,
+} from 'jsxstyle-utils';
 import path = require('path');
 import util = require('util');
 import vm = require('vm');
 
-import {
-  componentStyles,
-  CSSProperties,
-  getStyleKeysForProps,
-} from 'jsxstyle-utils';
-
+import loaderSchema = require('../../schema/loader.json');
 import { CacheObject } from '../../types';
 import getStylesByClassName from '../getStylesByClassName';
+
+import { defaultStyleAttributes } from './defaultStyleAttributes';
 import evaluateAstNode from './evaluateAstNode';
 import extractStaticTernaries, { Ternary } from './extractStaticTernaries';
 import generateUid from './generatedUid';
@@ -22,10 +24,14 @@ import getPropValueFromAttributes from './getPropValueFromAttributes';
 import getStaticBindingsForScope from './getStaticBindingsForScope';
 import parse from './parse';
 
+type NodePath<T> = import('@babel/traverse').NodePath<T>;
 type ParserPlugin = import('@babel/parser').ParserPlugin;
 
-// tslint:disable-next-line no-var-requires
-const loaderSchema = require('../../../schema/loader.json');
+declare module '@babel/traverse' {
+  interface NodePath {
+    _complexComponentProp?: t.VariableDeclarator[] | null;
+  }
+}
 
 export interface ExtractStylesOptions {
   classNameFormat?: 'hash';
@@ -43,14 +49,6 @@ export interface Options {
   warnCallback?: (str: string, ...args: any[]) => void;
 }
 
-interface TraversePath<TNode = any> {
-  node: TNode;
-  scope: {}; // TODO
-  _complexComponentProp?: any; // t.VariableDeclarator;
-  parentPath: TraversePath<any>;
-  insertBefore: (arg: t.Node) => void;
-}
-
 // props that will be passed through as-is
 const UNTOUCHED_PROPS = {
   key: true,
@@ -58,59 +56,16 @@ const UNTOUCHED_PROPS = {
 };
 
 // props that cannot appear in the props prop (so meta)
-const ALL_SPECIAL_PROPS = Object.assign(
-  {
-    className: true,
-    component: true,
-  },
-  UNTOUCHED_PROPS
-);
+const ALL_SPECIAL_PROPS = {
+  className: true,
+  component: true,
+  ...UNTOUCHED_PROPS,
+};
 
 const JSXSTYLE_SOURCES = {
   jsxstyle: true,
   'jsxstyle/preact': true,
 };
-
-const defaultStyleAttributes = {};
-
-for (const componentName in componentStyles) {
-  const styleObj = componentStyles[componentName];
-
-  // skip `Box`
-  if (!styleObj) {
-    continue;
-  }
-
-  const propKeys: string[] = Object.keys(styleObj);
-  const styleProps: t.JSXAttribute[] = [];
-
-  for (let idx = -1, len = propKeys.length; ++idx < len; ) {
-    const prop = propKeys[idx];
-    const value = styleObj[prop];
-    if (value == null || value === '') {
-      continue;
-    }
-
-    let valueEx: t.JSXExpressionContainer | t.StringLiteral;
-    if (typeof value === 'number') {
-      valueEx = t.jsxExpressionContainer(t.numericLiteral(value));
-    } else if (typeof value === 'string') {
-      valueEx = t.stringLiteral(value);
-    } else {
-      throw new Error(
-        util.format(
-          'Unhandled type `%s` for `%s` component styles',
-          typeof value,
-          componentName
-        )
-      );
-    }
-
-    styleProps.push(t.jsxAttribute(t.jsxIdentifier(prop), valueEx));
-  }
-
-  defaultStyleAttributes[componentName] = styleProps;
-}
 
 export default function extractStyles(
   src: string | Buffer,
@@ -119,11 +74,11 @@ export default function extractStyles(
   { cacheObject, warnCallback, errorCallback }: Options,
   options: ExtractStylesOptions = {}
 ): {
-  js: string | Buffer;
+  js: GeneratorResult['code'];
   css: string;
   cssFileName: string | null;
   ast: t.File;
-  map: any; // RawSourceMap from 'source-map'
+  map: GeneratorResult['map'];
 } {
   if (typeof src !== 'string') {
     throw new Error('`src` must be a string of javascript');
@@ -185,7 +140,6 @@ export default function extractStyles(
 
   const sourceDir = path.dirname(sourceFileName);
 
-  // Using a map for (officially supported) guaranteed insertion order
   const cssMap = new Map<string, { css: string; commentTexts: string[] }>();
 
   const parserPlugins = _parserPlugins ? [..._parserPlugins] : [];
@@ -202,14 +156,14 @@ export default function extractStyles(
   const ast = parse(src, parserPlugins);
 
   let jsxstyleSrc: string | null = null;
-  const validComponents = {};
+  const validComponents: Record<string, string> = {};
   // default to using require syntax
   let useImportSyntax = false;
   let hasValidComponents = false;
   let needsRuntimeJsxstyle = false;
 
   // Find jsxstyle require in program root
-  ast.program.body = ast.program.body.filter((item: t.Node) => {
+  ast.program.body = ast.program.body.filter(item => {
     if (t.isVariableDeclaration(item)) {
       item.declarations = item.declarations.filter(dec => {
         if (
@@ -354,7 +308,7 @@ export default function extractStyles(
   // Generate a UID that's unique in the program scope
   let boxComponentName: string | undefined;
   traverse(ast, {
-    Program(traversePath: TraversePath) {
+    Program(traversePath) {
       boxComponentName = generateUid(traversePath.scope, 'Box');
     },
   });
@@ -364,7 +318,7 @@ export default function extractStyles(
 
   const traverseOptions: { JSXElement: VisitNodeObject<t.JSXElement> } = {
     JSXElement: {
-      enter(traversePath: TraversePath<t.JSXElement>) {
+      enter(traversePath) {
         const node = traversePath.node.openingElement;
 
         if (
@@ -376,13 +330,15 @@ export default function extractStyles(
           return;
         }
 
-        // Remember the source component
+        // remember the source component
         const originalNodeName = node.name.name;
         const srcKey = validComponents[originalNodeName];
 
+        // Rename the component to Box...
         node.name.name = boxComponentName!;
 
-        // prepend initial styles
+        // ...and prepend the original component's default styles.
+        // This allows default styles to be extracted along with user-specified styles.
         const initialStyles = defaultStyleAttributes[srcKey];
         if (initialStyles) {
           node.attributes = [...initialStyles, ...node.attributes];
@@ -418,62 +374,65 @@ export default function extractStyles(
             })();
 
         let lastSpreadIndex: number = -1;
+
+        // Flatten all evaluatable spreads in place as additional attributes
         const flattenedAttributes: Array<
           t.JSXAttribute | t.JSXSpreadAttribute
         > = [];
-        node.attributes.forEach(attr => {
-          if (t.isJSXSpreadAttribute(attr)) {
-            try {
-              const spreadValue = attemptEval(attr.argument);
+        for (const attr of node.attributes) {
+          if (!t.isJSXSpreadAttribute(attr)) {
+            flattenedAttributes.push(attr);
+            continue;
+          }
 
-              if (typeof spreadValue !== 'object' || spreadValue == null) {
-                lastSpreadIndex = flattenedAttributes.push(attr) - 1;
-              } else {
-                for (const k in spreadValue) {
-                  const value = spreadValue[k];
+          try {
+            const spreadValue: Record<string, any> = attemptEval(attr.argument);
 
-                  if (typeof value === 'number') {
-                    flattenedAttributes.push(
-                      t.jsxAttribute(
-                        t.jsxIdentifier(k),
-                        t.jsxExpressionContainer(t.numericLiteral(value))
-                      )
-                    );
-                  } else if (value === null) {
-                    // why would you ever do this
-                    flattenedAttributes.push(
-                      t.jsxAttribute(
-                        t.jsxIdentifier(k),
-                        t.jsxExpressionContainer(t.nullLiteral())
-                      )
-                    );
-                  } else {
-                    // toString anything else
-                    // TODO: is this a bad idea
-                    flattenedAttributes.push(
-                      t.jsxAttribute(
-                        t.jsxIdentifier(k),
-                        t.jsxExpressionContainer(t.stringLiteral('' + value))
-                      )
-                    );
-                  }
+            if (typeof spreadValue !== 'object' || spreadValue == null) {
+              lastSpreadIndex = flattenedAttributes.push(attr) - 1;
+            } else {
+              for (const k in spreadValue) {
+                const value = spreadValue[k];
+
+                if (typeof value === 'number') {
+                  flattenedAttributes.push(
+                    t.jsxAttribute(
+                      t.jsxIdentifier(k),
+                      t.jsxExpressionContainer(t.numericLiteral(value))
+                    )
+                  );
+                } else if (value === null) {
+                  // why would you ever do this
+                  flattenedAttributes.push(
+                    t.jsxAttribute(
+                      t.jsxIdentifier(k),
+                      t.jsxExpressionContainer(t.nullLiteral())
+                    )
+                  );
+                } else {
+                  // toString anything else
+                  // TODO: is this a bad idea
+                  flattenedAttributes.push(
+                    t.jsxAttribute(
+                      t.jsxIdentifier(k),
+                      t.jsxExpressionContainer(t.stringLiteral('' + value))
+                    )
+                  );
                 }
               }
-            } catch (e) {
-              lastSpreadIndex = flattenedAttributes.push(attr) - 1;
             }
-          } else {
-            flattenedAttributes.push(attr);
+          } catch (e) {
+            lastSpreadIndex = flattenedAttributes.push(attr) - 1;
           }
-        });
+        }
 
         node.attributes = flattenedAttributes;
 
         let propsAttributes: Array<t.JSXSpreadAttribute | t.JSXAttribute> = [];
         const staticAttributes: Record<string, any> = {};
-        let inlinePropCount = 0;
-
         const staticTernaries: Ternary[] = [];
+
+        let inlinePropCount = 0;
 
         node.attributes = node.attributes.filter((attribute, idx) => {
           if (
@@ -807,12 +766,15 @@ export default function extractStyles(
                   generate(componentPropValue).code
                 );
               }
-              traversePath._complexComponentProp = t.variableDeclarator(
-                t.identifier(node.name.name),
-                t.isJSXEmptyExpression(componentPropValue)
-                  ? t.nullLiteral()
-                  : componentPropValue
-              );
+              // TODO better way to pass value around?
+              traversePath._complexComponentProp = [
+                t.variableDeclarator(
+                  t.identifier(node.name.name),
+                  t.isJSXEmptyExpression(componentPropValue)
+                    ? t.nullLiteral()
+                    : componentPropValue
+                ),
+              ];
             }
 
             // remove component prop from attributes
@@ -1021,17 +983,20 @@ export default function extractStyles(
           }
         }
       },
-      exit(traversePath: TraversePath<t.JSXElement>) {
+      exit(traversePath) {
         if (traversePath._complexComponentProp) {
           if (t.isJSXElement(traversePath.parentPath)) {
+            const parentPathProps = [...traversePath._complexComponentProp];
+            if (traversePath.parentPath._complexComponentProp) {
+              parentPathProps.unshift(
+                ...traversePath.parentPath._complexComponentProp
+              );
+            }
             // bump
-            traversePath.parentPath._complexComponentProp = [].concat(
-              traversePath.parentPath._complexComponentProp || [],
-              traversePath._complexComponentProp
-            );
+            traversePath.parentPath._complexComponentProp = parentPathProps;
           } else {
             // find nearest Statement
-            let statementPath = traversePath;
+            let statementPath: NodePath<t.Node> = traversePath;
             do {
               statementPath = statementPath.parentPath;
             } while (!t.isStatement(statementPath));
@@ -1041,10 +1006,9 @@ export default function extractStyles(
               'Could not find a statement'
             );
 
-            const decs = t.variableDeclaration(
-              'var',
-              [].concat(traversePath._complexComponentProp)
-            );
+            const decs = t.variableDeclaration('var', [
+              ...traversePath._complexComponentProp,
+            ]);
 
             statementPath.insertBefore(decs);
           }

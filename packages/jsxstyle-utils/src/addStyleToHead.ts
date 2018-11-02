@@ -6,24 +6,12 @@ const canUseDOM = !!(
 
 let styleElement: HTMLStyleElement | undefined;
 
-interface HotData {
-  styleElement: typeof styleElement;
-}
-
-interface ModuleHot<T = HotData> {
-  hot: {
-    data: T;
-    addDisposeHandler: (handler: (data: T) => void) => void;
-  };
-}
-
 if (
   typeof module !== 'undefined' &&
-  (module as any).hot &&
-  typeof (module as any).hot.addDisposeHandler === 'function'
+  module.hot &&
+  typeof module.hot.addDisposeHandler === 'function'
 ) {
-  // gross
-  const { hot } = (module as any) as ModuleHot;
+  const { hot } = module;
   if (typeof hot.data === 'object') {
     styleElement = hot.data.styleElement;
   }

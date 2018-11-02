@@ -4,36 +4,20 @@ import path = require('path');
 import evaluateAstNode from './evaluateAstNode';
 import getSourceModule from './getSourceModule';
 
+type Binding = import('@babel/traverse').Binding;
+type Scope = import('@babel/traverse').Scope;
+
 export interface BindingCache {
   [key: string]: string | null;
 }
 
-interface Binding {
-  identifier: any;
-  scope: any;
-  path: any;
-  // this list is incomplete
-  kind: 'module' | 'let' | 'const' | 'var' | 'param' | 'hoisted' | 'local';
-
-  constantViolations: any[];
-  constant: boolean;
-
-  referencePaths: any[]; // NodePath[]
-  referenced: boolean;
-  references: number;
-
-  hasDeoptedValue: boolean;
-  hasValue: boolean;
-  value: any;
-}
-
 export default function getStaticBindingsForScope(
-  scope: any,
+  scope: Scope,
   whitelist: string[] = [],
   sourceFileName: string,
   bindingCache: BindingCache
 ): Record<string, any> {
-  const bindings: Record<string, Binding> = scope.getAllBindings();
+  const bindings = scope.getAllBindings() as Record<string, Binding>;
   const ret: Record<string, any> = {};
   const sourceDir = path.dirname(sourceFileName);
 

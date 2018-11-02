@@ -19,6 +19,15 @@
     ],
     "no-console": [true, "log"],
     "object-literal-sort-keys": [true, "ignore-case"],
+    "ordered-imports": [
+      true,
+      {
+        "import-sources-order": "lowercase-last",
+        "named-imports-order": "lowercase-last",
+        "grouped-imports": true,
+        "module-source-path": "full"
+      }
+    ],
     "variable-name": [
       true,
       "ban-keywords",

@@ -1,5 +1,14 @@
 import t = require('@babel/types');
 import invariant = require('invariant');
+type Scope = import('@babel/traverse').Scope;
+
+declare module '@babel/traverse' {
+  interface Scope {
+    references: Record<string, boolean>;
+    uids: Record<string, boolean>;
+    hasLabel(name: string): boolean;
+  }
+}
 
 // TODO: open a PR upstream
 declare module '@babel/types' {
@@ -7,7 +16,7 @@ declare module '@babel/types' {
 }
 
 // A clone of path.scope.generateUid that doesn't prepend underscores
-export default function generateUid(scope: any, name: string): string {
+export default function generateUid(scope: Scope, name: string): string {
   invariant(
     typeof scope === 'object',
     'generateUid expects a scope object as its first parameter'

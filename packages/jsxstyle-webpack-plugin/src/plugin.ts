@@ -1,17 +1,24 @@
-import { CacheObject, PluginContext } from './types';
-
 import fs = require('fs');
-import webpack = require('webpack');
 import MemoryFileSystem = require('webpack/lib/MemoryOutputFileSystem');
 import NodeWatchFileSystem = require('webpack/lib/node/NodeWatchFileSystem');
+
+import { CacheObject, PluginContext } from './types';
 import wrapFileSystem from './utils/wrapFileSystem';
 
-import Compiler = webpack.Compiler;
-import Compilation = webpack.compilation.Compilation;
+type Compiler = import('webpack').Compiler;
+type Compilation = import('webpack').compilation.Compilation;
+type WebpackPlugin = import('webpack').Plugin;
 
 const counterKey = Symbol.for('counter');
 
-class JsxstyleWebpackPlugin implements webpack.Plugin {
+declare module 'webpack' {
+  interface Compiler {
+    // TODO submit PR to DefinitelyTyped
+    watchFileSystem: import('webpack').InputFileSystem;
+  }
+}
+
+class JsxstyleWebpackPlugin implements WebpackPlugin {
   constructor() {
     this.memoryFS = new MemoryFileSystem();
 
@@ -61,8 +68,7 @@ class JsxstyleWebpackPlugin implements webpack.Plugin {
     const environmentPlugin = (): void => {
       const wrappedFS = wrapFileSystem(compiler.inputFileSystem, this.memoryFS);
       compiler.inputFileSystem = wrappedFS;
-      // TODO submit PR to DefinitelyTyped
-      (compiler as any).watchFileSystem = new NodeWatchFileSystem(wrappedFS);
+      compiler.watchFileSystem = new NodeWatchFileSystem(wrappedFS);
     };
 
     if (compiler.hooks) {

@@ -11,10 +11,10 @@
     "noImplicitReturns": true,
     "noImplicitThis": true,
     "noUnusedLocals": true,
+    "resolveJsonModule": true,
     "outDir": "lib",
     "sourceMap": true,
-    "strictNullChecks": true,
-    "suppressImplicitAnyIndexErrors": true,
+    "strict": true,
     "target": "es6",
     "types": ["node"]
   },

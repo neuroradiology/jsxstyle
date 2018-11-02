@@ -3,7 +3,7 @@ import babelParser = require('@babel/parser');
 export default function parse(
   code: string | Buffer,
   plugins: babelParser.ParserPlugin[] = []
-): any {
+): import('@babel/types').File {
   return babelParser.parse(code.toString(), {
     plugins: Array.from(
       new Set<babelParser.ParserPlugin>([
