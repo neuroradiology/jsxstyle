@@ -49,7 +49,6 @@ config.module = {
           loader: JsxstylePlugin.loader,
           options: {
             classNameFormat: 'hash',
-            liteMode: 'react',
           },
         },
       ],

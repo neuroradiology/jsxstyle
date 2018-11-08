@@ -1,4 +1,5 @@
 import path = require('path');
+
 import extractStyles from '../../packages/jsxstyle-webpack-plugin/lib/utils/ast/extractStyles';
 
 const whitelistedModules = [require.resolve('./mock/LC')];
@@ -547,38 +548,6 @@ const blue = "blueberry";
 <Block color={dynamic ? null : "blue"} />`,
       pathTo('mock/ternary-null-values.js'),
       { cacheObject: {} }
-    );
-
-    expect(rv.js).toMatchSnapshot();
-    expect(rv.css).toMatchSnapshot();
-  });
-});
-
-describe('experimental: jsxstyle lite', () => {
-  const srcJS = `<block static="value" dynamic={value} />;
-<inline-block color="blue" />;
-<box />;
-<row />;
-<col flexGrow={1} />;`;
-
-  it('converts lite mode elements to jsxstyle components (React)', () => {
-    const rv = extractStyles(
-      srcJS,
-      pathTo('mock/lite-mode.js'),
-      { cacheObject: {} },
-      { liteMode: 'react' }
-    );
-
-    expect(rv.js).toMatchSnapshot();
-    expect(rv.css).toMatchSnapshot();
-  });
-
-  it('converts lite mode elements to jsxstyle components (Preact)', () => {
-    const rv = extractStyles(
-      srcJS,
-      pathTo('mock/lite-mode.js'),
-      { cacheObject: {} },
-      { liteMode: 'preact' }
     );
 
     expect(rv.js).toMatchSnapshot();
