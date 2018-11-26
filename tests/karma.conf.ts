@@ -83,37 +83,27 @@ const getWebpackConfig = ({ useReact15 }: { useReact15: boolean }) => {
 };
 
 const isCI = !!process.env.CI;
-const useHeadlessChrome =
-  process.env.npm_lifecycle_event === 'karma-headless-chrome';
+const isLocal = !!process.env.KARMA_LOCAL;
 
-if (!useHeadlessChrome) {
-  if (
-    isCI &&
-    process.env.TRAVIS_PULL_REQUEST !== 'false' &&
-    process.env.TRAVIS_SECURE_ENV_VARS !== 'true'
-  ) {
-    console.info('Karma tests do not run for external pull requests');
-    process.exit(0);
-  }
+if (
+  isCI &&
+  process.env.TRAVIS_PULL_REQUEST !== 'false' &&
+  process.env.TRAVIS_SECURE_ENV_VARS !== 'true'
+) {
+  console.info('Karma tests do not run for external pull requests');
+  process.exit(0);
+}
 
-  if (!process.env.SAUCE_USERNAME || !process.env.SAUCE_ACCESS_KEY) {
-    console.error('SAUCE_USERNAME and SAUCE_ACCESS_KEY must both be set');
-    process.exit(1);
-  }
+if (!process.env.SAUCE_USERNAME || !process.env.SAUCE_ACCESS_KEY) {
+  console.error('SAUCE_USERNAME and SAUCE_ACCESS_KEY must both be set');
+  process.exit(1);
 }
 
 export default (config: import('karma').Config) => {
-  if (useHeadlessChrome) {
+  if (isLocal) {
     config.set({
-      browsers: [isCI ? 'ChromeHeadlessNoSandbox' : 'ChromeHeadless'],
+      browsers: ['ChromeHeadless'],
       concurrency: 1,
-      customLaunchers: {
-        ChromeHeadlessNoSandbox: {
-          base: 'ChromeHeadless',
-          browserName: 'ChromeHeadlessNoSandbox',
-          flags: ['--no-sandbox'],
-        },
-      },
       reporters: ['progress'],
     });
   } else {

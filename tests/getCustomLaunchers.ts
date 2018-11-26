@@ -32,8 +32,7 @@ export interface WebdriverBrowser extends SauceBase {
   automation_backend: 'webdriver';
 }
 
-export interface MobileDevice extends SauceBase {
-  automation_backend: 'webdriver';
+export interface MobileDevice extends WebdriverBrowser {
   device: string;
 }
 
