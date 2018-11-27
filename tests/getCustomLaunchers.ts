@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as invariant from 'invariant';
-import { flattenDeep, groupBy, sample, uniqBy } from 'lodash';
+import { groupBy, uniqBy } from 'lodash';
 import * as path from 'path';
 
 const mobilePlatforms = {
@@ -8,17 +8,30 @@ const mobilePlatforms = {
   iphone: 'iOS',
 };
 
-export type SauceApiName =
-  | 'android'
-  | 'chrome'
-  | 'firefox'
-  | 'internet explorer'
-  | 'ipad'
-  | 'iphone'
-  | 'microsoftedge'
-  | 'safari';
+const mobileApiNames = {
+  android: true,
+  ipad: true,
+  iphone: true,
+};
 
-export interface SauceBase {
+const desktopApiName = {
+  chrome: true,
+  firefox: true,
+  'internet explorer': true,
+  microsoftedge: true,
+  safari: true,
+};
+
+const excludedApiNames = {
+  'internet explorer': true,
+  ipad: true,
+};
+
+type MobileApiName = keyof typeof mobileApiNames;
+type DesktopApiName = keyof typeof desktopApiName;
+type SauceApiName = MobileApiName | DesktopApiName;
+
+interface SauceBase {
   api_name: SauceApiName;
   automation_backend: 'webdriver' | 'appium';
   latest_stable_version: string;
@@ -28,15 +41,17 @@ export interface SauceBase {
   short_version: string;
 }
 
-export interface WebdriverBrowser extends SauceBase {
+interface WebdriverBrowser extends SauceBase {
   automation_backend: 'webdriver';
 }
 
-export interface MobileDevice extends WebdriverBrowser {
+interface MobileDevice extends WebdriverBrowser {
+  api_name: MobileApiName;
   device: string;
 }
 
-export interface AppiumDevice extends SauceBase {
+interface AppiumDevice extends SauceBase {
+  api_name: MobileApiName;
   automation_backend: 'appium';
   device: string;
   deprecated_backend_versions: string[];
@@ -44,20 +59,20 @@ export interface AppiumDevice extends SauceBase {
   supported_backend_versions: string[];
 }
 
-export type SauceData = WebdriverBrowser | MobileDevice | AppiumDevice;
+type SauceData = WebdriverBrowser | MobileDevice | AppiumDevice;
 
-export interface LauncherBase {
+interface LauncherBase {
   base: 'SauceLabs';
   browserName: string;
   name: string;
 }
 
-export interface WebdriverLauncher extends LauncherBase {
+interface WebdriverLauncher extends LauncherBase {
   version: string;
   platform?: string;
 }
 
-export interface AppiumLauncher extends LauncherBase {
+interface AppiumLauncher extends LauncherBase {
   appiumVersion: string;
   browserName: string;
   deviceName: string;
@@ -65,7 +80,7 @@ export interface AppiumLauncher extends LauncherBase {
   platformVersion: string;
 }
 
-export type Launcher = WebdriverLauncher | AppiumLauncher;
+type Launcher = WebdriverLauncher | AppiumLauncher;
 
 /** Left pads a number with zeros. will fail on numbers greater than 10,000 */
 const padNum = (num: string): string => {
@@ -89,43 +104,68 @@ const semverSort = (a: string, b: string) =>
 
 const sauceDataFile = path.join(__dirname, 'saucelabs-data.json');
 
-export default function getCustomLaunchers(): Record<string, Launcher> {
+export function getCustomLaunchers(): Record<string, Launcher> {
   invariant(fs.existsSync(sauceDataFile), 'Sauce data file does not exist');
-  const sauceData: AppiumDevice[] = JSON.parse(
+  const sauceData: SauceData[] = JSON.parse(
     fs.readFileSync(sauceDataFile, 'utf8')
   );
   invariant(Array.isArray(sauceData), 'Sauce data is not an array');
   invariant(sauceData.length > 10, 'Sauce data is incomplete');
 
-  const dataByApiName = groupBy(sauceData, 'api_name');
+  const webdriverDevices = sauceData.filter(
+    (f): f is WebdriverBrowser =>
+      !excludedApiNames[f.api_name] &&
+      f.automation_backend === 'webdriver' &&
+      !mobileApiNames[f.api_name]
+  );
 
-  const devices = flattenDeep<AppiumDevice>(
-    Object.keys(dataByApiName).map(apiName => {
-      const groupedByOsVersion = groupBy(
-        dataByApiName[apiName],
-        'short_version'
+  const appiumDevices = sauceData.filter(
+    (f): f is AppiumDevice =>
+      !excludedApiNames[f.api_name] && f.automation_backend === 'appium'
+  );
+
+  const dataByApiName = groupBy(
+    [...webdriverDevices, ...appiumDevices],
+    'api_name'
+  );
+
+  const devices: Array<AppiumDevice | WebdriverBrowser> = [];
+
+  Object.keys(dataByApiName).map(apiName => {
+    const groupedByBrowserVersion = groupBy(
+      dataByApiName[apiName],
+      'short_version'
+    );
+
+    const osVersions = Object.keys(groupedByBrowserVersion)
+      // filter out non-numeric OS versions
+      .filter(f => !isNaN(parseInt(f, 10)))
+      // sort OS versions by semver
+      .sort(semverSort)
+      // reverse so that uniqBy sees the largest number first
+      .reverse()
+      .map(f =>
+        groupedByBrowserVersion[f].sort((a, b) => semverSort(b.os, a.os))
       );
 
-      const osVersions = Object.keys(groupedByOsVersion)
-        .filter(f => !isNaN(parseInt(f, 10)))
-        .sort(semverSort)
-        // reversing so that uniqBy sees the largest number first
-        .reverse();
-      const latestOSVersions = uniqBy(osVersions, v => parseInt(v, 10));
+    console.log(apiName + '!!!');
 
-      const sauceObjs = latestOSVersions
-        .slice(0, 4)
-        .map(v => sample(groupedByOsVersion[v])!);
+    const latestOSVersions = uniqBy(osVersions, v =>
+      parseInt(v[0].short_version, 10)
+    );
 
-      return sauceObjs;
-    })
-  );
+    console.log(latestOSVersions);
+
+    const sauceObjs = latestOSVersions.slice(0, 4).map(v => v[0]);
+
+    devices.push(...sauceObjs);
+  });
 
   const customLaunchers: Record<string, Launcher> = {};
 
-  // mobile devices
-  devices.forEach(data => {
-    const key = `sl_${data.api_name}_${data.short_version}`;
+  devices.forEach(device => {
+    const key = `sl_${device.api_name}_${device.short_version}`;
+    const version = device.long_version.replace(/\.$/g, '');
 
     // make sure there aren't any key collisions
     invariant(
@@ -135,31 +175,56 @@ export default function getCustomLaunchers(): Record<string, Launcher> {
     );
 
     let browserName;
-    if (data.api_name === 'iphone') {
-      browserName = 'Safari';
-    } else if (data.api_name === 'android') {
-      const androidVersion = parseInt(data.short_version, 10);
-      if (androidVersion < 6) {
-        browserName = 'Browser';
-      } else {
-        browserName = 'Chrome';
-      }
-    } else {
-      return;
-    }
 
-    customLaunchers[key] = {
-      // recommended_backend_version can be an empty string
-      appiumVersion:
-        data.recommended_backend_version ||
-        data.supported_backend_versions.slice(-1)[0],
-      base: 'SauceLabs',
-      browserName,
-      deviceName: data.long_name,
-      name: `${data.long_name} ${data.short_version}`,
-      platformName: mobilePlatforms[data.api_name] || data.long_name,
-      platformVersion: data.short_version,
-    };
+    // Mobile devices
+    if (
+      device.automation_backend === 'appium' &&
+      (device.api_name === 'iphone' || device.api_name === 'android')
+    ) {
+      if (device.api_name === 'iphone') {
+        browserName = 'Safari';
+      } else if (device.api_name === 'android') {
+        const androidVersion = parseInt(device.short_version, 10);
+        if (androidVersion < 6) {
+          browserName = 'Browser';
+        } else {
+          browserName = 'Chrome';
+        }
+      }
+
+      customLaunchers[key] = {
+        // recommended_backend_version is possibly an empty string
+        appiumVersion:
+          device.recommended_backend_version ||
+          device.supported_backend_versions.slice(-1)[0],
+        base: 'SauceLabs',
+        browserName,
+        deviceName: device.long_name,
+        name: `${device.long_name} ${version}`,
+        platformName: mobilePlatforms[device.api_name] || device.long_name,
+        platformVersion: device.short_version,
+      };
+    } else if (
+      device.api_name === 'chrome' ||
+      device.api_name === 'firefox' ||
+      device.api_name === 'microsoftedge' ||
+      device.api_name === 'safari'
+    ) {
+      // let platform: string | undefined;
+      // if (data.api_name === 'safari') {
+      //   platform = data.os;
+      // } else {
+      //   platform = 'Windows 10';
+      // }
+
+      customLaunchers[key] = {
+        base: 'SauceLabs',
+        browserName: device.api_name,
+        name: `${device.long_name} ${version}`,
+        platform: device.os,
+        version: device.short_version,
+      };
+    }
   });
 
   // IE 9-11
@@ -172,36 +237,21 @@ export default function getCustomLaunchers(): Record<string, Launcher> {
     };
   });
 
-  // browsers that support the `latest` field
-  ['MicrosoftEdge', 'Safari', 'Firefox', 'Chrome'].forEach(b => {
-    const niceName = b === 'MicrosoftEdge' ? 'Edge' : b;
-    for (let idx = -1; ++idx < 4; ) {
-      const k = `sl_${b}_latest${idx > 0 ? `-${idx}` : ''}`.toLowerCase();
-      const version = `latest${idx > 0 ? `-${idx}` : ''}`;
-      let platform: string | undefined;
-      if (b !== 'Safari') {
-        platform = 'Windows 10';
-      }
-
-      customLaunchers[k] = {
-        base: 'SauceLabs',
-        browserName: b,
-        name: `${niceName} ${version}`,
-        platform,
-        version,
-      };
-    }
-  });
-
   const testPrefix = process.env.TRAVIS_EVENT_TYPE
     ? 'Travis ' + process.env.TRAVIS_EVENT_TYPE.replace(/_/g, ' ')
     : 'Local test';
 
-  const tzOffset = new Date().getTimezoneOffset();
-  const [dateString, timeString] = new Date(Date.now() - tzOffset * 60000)
+  // timezone offset in hours
+  const tzOffset = new Date().getTimezoneOffset() / -60;
+  const [dateString, timeString] = new Date(
+    Date.now() + tzOffset * 60 * 60 * 1000
+  )
     .toISOString()
     .split(/[T.]/);
-  const when = ` @ ${dateString} ${timeString} GMT${-tzOffset / 60}: `;
+
+  const offsetString = (tzOffset < 0 ? '' : '+') + tzOffset;
+
+  const when = ` @ ${dateString} ${timeString} GMT${offsetString}: `;
 
   for (const k in customLaunchers) {
     customLaunchers[k].name = testPrefix + when + customLaunchers[k].name;

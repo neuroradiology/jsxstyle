@@ -7,7 +7,7 @@
     "jest-update-snapshot": "jest --updateSnapshot",
     "karma": "karma start",
     "karma-local": "KARMA_LOCAL=yep karma start",
-    "update-sauce-data": "curl https://saucelabs.com/rest/v1/info/platforms/appium > saucelabs-data.json"
+    "update-sauce-data": "curl https://saucelabs.com/rest/v1/info/platforms/all > saucelabs-data.json"
   },
   "dependencies": {
     "@babel/core": "^7.0.0",
@@ -33,6 +33,7 @@
     "karma-webpack": "^4.0.0-0",
     "mini-css-extract-plugin": "^0.4.0",
     "npm-packlist": "^1.1.10",
+    "raf": "^3.4.1",
     "react-15": "npm:react@^15",
     "react-dom-15": "npm:react-dom@^15",
     "rollup-plugin-node-resolve": "^3.0.2",

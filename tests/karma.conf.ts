@@ -1,6 +1,6 @@
 import path = require('path');
 
-import getCustomLaunchers from './getCustomLaunchers';
+import { getCustomLaunchers } from './getCustomLaunchers';
 
 // augment karma module with custom config options
 declare module 'karma' {
@@ -116,7 +116,7 @@ export default (config: import('karma').Config) => {
     });
   }
 
-  let tunnelIdentifier;
+  let tunnelIdentifier: string | undefined;
   if (isCI) {
     tunnelIdentifier = process.env.TRAVIS_JOB_NUMBER;
   }
